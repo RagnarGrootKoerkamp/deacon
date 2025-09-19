@@ -118,6 +118,7 @@ impl U64HashSet {
         type S = wide::i64x4;
         let keys = S::splat(key as i64);
 
+        let mut i = 1;
         loop {
             use std::mem::transmute;
             // Safety: bucket_mask is correct because the number of buckets is a power of 2.
@@ -132,7 +133,11 @@ impl U64HashSet {
                 return false;
             }
 
-            bucket_i += 1;
+            bucket_i += i;
+            i += i;
+            if bucket_i >= self.table.len() {
+                bucket_i -= self.table.len();
+            }
         }
     }
 
@@ -148,6 +153,7 @@ impl U64HashSet {
         let element_offset_in_bucket = (hash64 >> 61) as usize;
         let mut bucket_i = hash64 as usize;
 
+        let mut i = 1;
         loop {
             // Safety: bucket_mask is correct because the number of buckets is a power of 2.
             let bucket = unsafe { self.table.get_unchecked_mut(bucket_i & bucket_mask) };
@@ -163,8 +169,12 @@ impl U64HashSet {
                     return;
                 }
             }
-            bucket_i += 1;
+            bucket_i += i;
+            i += i;
             self.skips += 1;
+            if bucket_i >= self.table.len() {
+                bucket_i -= self.table.len();
+            }
         }
     }
 }
