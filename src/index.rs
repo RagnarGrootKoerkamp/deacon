@@ -4,6 +4,7 @@ use crate::minimizers::KmerHasher;
 use anyhow::{Context, Result};
 use bincode::serde::{decode_from_std_read, encode_into_std_write};
 use rayon::prelude::*;
+use rustc_hash::FxHashSet;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Write};
@@ -117,11 +118,13 @@ fn load_minimizer_hashes_fixedint(mut reader: impl std::io::Read) -> Result<Hash
 
     // Populate FxHashSet
     let mut minimizers = HashSet::with_capacity(count);
+    // let mut minimizers = FxHashSet::<u64>::with_capacity_and_hasher(count, Default::default());
     for _ in 0..count {
-        minimizers.insert(decode_from_std_read(&mut reader, config).unwrap());
+        minimizers.insert_new(decode_from_std_read(&mut reader, config).unwrap());
     }
     minimizers.stats();
 
+    // todo!();
     Ok(minimizers)
 }
 
