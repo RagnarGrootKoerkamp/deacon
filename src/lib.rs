@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, impl_trait_in_assoc_type)]
+#![feature(core_intrinsics, impl_trait_in_assoc_type, bigint_helper_methods)]
 //! # Deacon
 //!
 //! A fast minimizer-based filter for nucleotide sequences in FASTA or FASTQ format,

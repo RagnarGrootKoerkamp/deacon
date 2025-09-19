@@ -95,8 +95,7 @@ impl U64HashSet {
     #[inline(always)]
     pub fn prefetch(&self, key: u64) {
         let hash64 = Hasher::default().hash_one(key);
-        let mask = self.table.len() - 1;
-        let bucket_i = (hash64 as usize) & mask;
+        let bucket_i = (hash64 as usize).widening_mul(self.table.len()).1;
         // Safety: bucket_mask is correct because the number of buckets is a power of 2.
         unsafe {
             std::intrinsics::prefetch_write_data::<_, 0>(
@@ -111,8 +110,7 @@ impl U64HashSet {
             return self.has_zero;
         }
         let hash64 = Hasher::default().hash_one(key);
-        let bucket_mask = self.table.len() - 1;
-        let mut bucket_i = hash64 as usize;
+        let mut bucket_i = (hash64 as usize).widening_mul(self.table.len()).1;
 
         // type S = wide::u64x4;
         type S = wide::i64x4;
@@ -122,7 +120,7 @@ impl U64HashSet {
         loop {
             use std::mem::transmute;
             // Safety: bucket_mask is correct because the number of buckets is a power of 2.
-            let bucket = unsafe { self.table.get_unchecked(bucket_i & bucket_mask) };
+            let bucket = unsafe { self.table.get_unchecked(bucket_i) };
             let [h1, h2]: &[S; 2] = unsafe { transmute(&bucket.0) };
             let mask = (h1.cmp_eq(keys) | h2.cmp_eq(keys)).move_mask() as u8;
             if mask > 0 {
@@ -149,14 +147,13 @@ impl U64HashSet {
             return;
         }
         let hash64 = Hasher::default().hash_one(key);
-        let bucket_mask = self.table.len() - 1;
         let element_offset_in_bucket = (hash64 >> 61) as usize;
-        let mut bucket_i = hash64 as usize;
+        let mut bucket_i = (hash64 as usize).widening_mul(self.table.len()).1;
 
         let mut i = 1;
         loop {
             // Safety: bucket_mask is correct because the number of buckets is a power of 2.
-            let bucket = unsafe { self.table.get_unchecked_mut(bucket_i & bucket_mask) };
+            let bucket = unsafe { self.table.get_unchecked_mut(bucket_i ) };
             for element_i in 0..BUCKET_SIZE {
                 let element = &mut bucket.0[(element_i + element_offset_in_bucket) % BUCKET_SIZE];
                 if *element == 0 {
