@@ -15,6 +15,8 @@ pub struct U64HashSet {
     table: Box<[Bucket]>,
     len: usize,
     has_zero: bool,
+    hits: usize,
+    skips: usize,
 }
 
 impl IntoIterator for &U64HashSet {
@@ -39,14 +41,19 @@ const BUCKET_SIZE: usize = 8;
 struct Bucket([u64; BUCKET_SIZE]);
 
 impl U64HashSet {
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub fn with_capacity(n: usize) -> Self {
+        eprintln!("N        {n}");
+        eprintln!("NEXT 2^k {}", n.next_power_of_two());
+        let capacity = n * 15 / 10;
+        eprintln!("CAPACITY {capacity}");
         // TODO: integer overflow...
-        let num_buckets = (capacity.next_power_of_two() * 2).div_ceil(BUCKET_SIZE);
+        let num_buckets = capacity.div_ceil(BUCKET_SIZE);
         let table = vec![Bucket([0u64; BUCKET_SIZE]); num_buckets].into_boxed_slice();
         Self {
             table,
             len: 0,
             has_zero: false,
+            hits: 0, skips: 0,
         }
     }
 
@@ -55,15 +62,45 @@ impl U64HashSet {
         self.len + self.has_zero as usize
     }
 
+    pub fn stats(&self) {
+        let mut counts = [0; 9];
+
+        eprintln!("Size    : {}", self.len);
+        eprintln!("hits    : {}", self.hits);
+        eprintln!("Skips   : {}", self.skips);
+        eprintln!("Skips/el: {}", self.skips as f32 / self.hits as f32);
+
+        let mut sum = 0;
+        let mut cnt = 0;
+        for bucket in &self.table {
+            type S = wide::i64x4;
+            use std::mem::transmute;
+            let [h1, h2]: &[S; 2] = unsafe { transmute(&bucket.0) };
+            let c0 = h1.cmp_eq(S::ZERO).move_mask().count_ones() as usize;
+            let c1 = h2.cmp_eq(S::ZERO).move_mask().count_ones() as usize;
+            let elems = BUCKET_SIZE - c0 - c1;
+            counts[elems] += 1;
+            cnt += 1;
+            sum += elems;
+        }
+        for i in 0..=8 {
+            eprintln!("{i}: {:>9}", counts[i]);
+        }
+        eprintln!("buckets {cnt}");
+        eprintln!("slots   {}", cnt * BUCKET_SIZE);
+        eprintln!("sum {sum}");
+        eprintln!("avg {}", sum as f32 / cnt as f32);
+    }
+
     #[inline(always)]
     pub fn prefetch(&self, key: u64) {
         let hash64 = Hasher::default().hash_one(key);
-        let bucket_mask = self.table.len() - 1;
-        let bucket_i = hash64 as usize;
+        let mask = self.table.len() - 1;
+        let bucket_i = (hash64 as usize) & mask;
         // Safety: bucket_mask is correct because the number of buckets is a power of 2.
         unsafe {
             std::intrinsics::prefetch_write_data::<_, 0>(
-                self.table.get_unchecked(bucket_i & bucket_mask) as *const Bucket as *const u8,
+                self.table.get_unchecked(bucket_i ) as *const Bucket as *const u8,
             )
         };
     }
@@ -117,6 +154,7 @@ impl U64HashSet {
             for element_i in 0..BUCKET_SIZE {
                 let element = &mut bucket.0[(element_i + element_offset_in_bucket) % BUCKET_SIZE];
                 if *element == 0 {
+                    self.hits += 1;
                     *element = key;
                     self.len += 1;
                     return;
@@ -126,6 +164,7 @@ impl U64HashSet {
                 }
             }
             bucket_i += 1;
+            self.skips += 1;
         }
     }
 }

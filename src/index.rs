@@ -120,6 +120,7 @@ fn load_minimizer_hashes_fixedint(mut reader: impl std::io::Read) -> Result<Hash
     for _ in 0..count {
         minimizers.insert(decode_from_std_read(&mut reader, config).unwrap());
     }
+    minimizers.stats();
 
     Ok(minimizers)
 }
