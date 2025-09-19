@@ -339,16 +339,24 @@ impl FilterProcessor {
         let mut hit_count = 0;
         let mut hit_kmers = Vec::new();
 
-        for (i, &hash) in minimizer_values.iter().enumerate() {
-            if self.minimizer_hashes.contains(hash) && seen_hits.insert(hash) {
-                hit_count += 1;
-                // Extract the k-mer sequence at this position
-                if self.debug && i < positions.len() {
-                    let pos = positions[i] as usize;
-                    let kmer = &effective_seq[pos..pos + self.kmer_length as usize];
-                    hit_kmers.push(String::from_utf8_lossy(kmer).to_string());
+        let mut i = 0;
+        let chunk_size = 32;
+        for chunk in minimizer_values.chunks(chunk_size) {
+            for hash in chunk {
+                self.minimizer_hashes.prefetch(*hash);
+            }
+            for (j, hash) in chunk.iter().enumerate() {
+                if self.minimizer_hashes.contains(*hash) && seen_hits.insert(hash) {
+                    hit_count += 1;
+                    // Extract the k-mer sequence at this position
+                    if self.debug {
+                        let pos = positions[i + j] as usize;
+                        let kmer = &effective_seq[pos..pos + self.kmer_length as usize];
+                        hit_kmers.push(String::from_utf8_lossy(kmer).to_string());
+                    }
                 }
             }
+            i += chunk_size;
         }
 
         (
