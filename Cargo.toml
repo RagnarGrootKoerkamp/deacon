@@ -56,8 +56,8 @@ compression = ["zstd", "liblzma", "flate2", "needletail/compression", "niffler/d
 gz = ["niffler/gz", "flate2", "flate2/default"]
 # `deacon server` feature.
 server = []
-default = ["server", "compression"]
-# default = ["server", "gz"]
+# default = ["server", "compression"]
+default = ["server"]
 
 [[test]]
 name = "cli_tests"
@@ -73,6 +73,8 @@ path = "tests/filter_tests.rs"
 
 [profile.release]
 opt-level = 3
+# lto = false
+# lto = 'thin'
 lto = true
 codegen-units = 1
 panic = "abort"
