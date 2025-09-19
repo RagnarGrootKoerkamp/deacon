@@ -55,7 +55,8 @@ compression = ["zstd", "liblzma", "flate2", "needletail/compression", "niffler/d
 gz = ["niffler/gz", "flate2", "flate2/default"]
 # `deacon server` feature.
 server = []
-default = ["server", "gz"]
+default = ["server", "compression"]
+# default = ["server", "gz"]
 
 [[test]]
 name = "cli_tests"
