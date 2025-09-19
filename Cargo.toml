@@ -38,6 +38,7 @@ paraseq = { path = "../paraseq", default-features = false, features = ["anyhow",
 liblzma = { version = "0.3.1", optional = true }
 flate2 = { version = "1.1", features = ["zlib-rs"], optional = true }
 zstd = { version = "0.13", optional = true }
+wide = "0.7.33"
 
 [lints.clippy]
 too_many_arguments = "allow"

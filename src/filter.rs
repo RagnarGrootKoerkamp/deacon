@@ -15,6 +15,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, Write};
 use std::sync::Arc;
 use std::time::Instant;
+use crate::HashSet;
 use xxhash_rust;
 
 const OUTPUT_BUFFER_SIZE: usize = 8 * 1024 * 1024; // Opt: 8MB output buffer
@@ -182,7 +183,7 @@ pub struct FilterSummary {
 #[derive(Clone)]
 struct FilterProcessor {
     // Minimizer matching parameters
-    minimizer_hashes: &'static FxHashSet<u64>,
+    minimizer_hashes: &'static HashSet,
     kmer_length: u8,
     window_size: u8,
     abs_threshold: usize,
@@ -248,7 +249,7 @@ impl FilterProcessor {
         }
     }
     fn new(
-        minimizer_hashes: &'static FxHashSet<u64>,
+        minimizer_hashes: &'static HashSet,
         kmer_length: u8,
         window_size: u8,
         config: &FilterProcessorConfig,
@@ -339,7 +340,7 @@ impl FilterProcessor {
         let mut hit_kmers = Vec::new();
 
         for (i, &hash) in minimizer_values.iter().enumerate() {
-            if self.minimizer_hashes.contains(&hash) && seen_hits.insert(hash) {
+            if self.minimizer_hashes.contains(hash) && seen_hits.insert(hash) {
                 hit_count += 1;
                 // Extract the k-mer sequence at this position
                 if self.debug && i < positions.len() {
@@ -439,7 +440,7 @@ impl FilterProcessor {
 
         // Count hits and collect k-mers
         for (i, &hash) in all_hashes.iter().enumerate() {
-            if self.minimizer_hashes.contains(&hash) && seen_hits_pair.insert(hash) {
+            if self.minimizer_hashes.contains(hash) && seen_hits_pair.insert(hash) {
                 pair_hit_count += 1;
                 if self.debug && i < all_positions.len() && i < all_sequences.len() {
                     let pos = all_positions[i] as usize;
